@@ -120,11 +120,27 @@ func ExerciseReachability(l *Laboratory, at time.Time) map[string]any {
 
     waveController := wave.NewController()
     waveContext, waveCancel := context.WithCancel(context.Background())
-    wave.StartForRun(waveContext, identities.Run, identities.Revision, waveController, at)
+    wave.StartForRun(waveContext, identities.Run, identities.Revision, waveController, "section-a", l.Sections, at)
     waveCancel()
     result["wave_stopped"] = waveController.WaitStopped(time.Second)
     wave.StopForAbort(waveController)
     result["wave_commands"] = wave.CommandCount(waveController, identities.Run)
+    result["wave_aborts"] = wave.AbortCount(waveController, identities.Run)
+
+    guardedSections := tank.NewSections([]string{"guard-section"}, 2.4)
+    guardedController := wave.NewController()
+    guardContext, guardCancel := context.WithCancel(context.Background())
+    wave.StartForRun(guardContext, identities.Run, identities.Revision, guardedController, "guard-section", guardedSections, at)
+    guardedSections.UpdateDepth("guard-section", 0.1)
+    result["wave_guard_stopped"] = guardedController.WaitStopped(time.Second)
+    guardCancel()
+    result["wave_guard_commands"] = wave.CommandCount(guardedController, identities.Run)
+    result["wave_guard_aborts"] = wave.AbortCount(guardedController, identities.Run)
+    if aborts := guardedController.Aborts(); len(aborts) > 0 {
+        result["wave_guard_abort_command"] = aborts[0].Command
+        result["wave_guard_abort_reason"] = aborts[0].Reason
+        result["wave_guard_abort_envelope"] = aborts[0].Envelope
+    }
 
     absorberController := absorber.NewController(tank.NewBoundary())
     absorberCoordinator := absorber.NewCoordinator(absorberController)
