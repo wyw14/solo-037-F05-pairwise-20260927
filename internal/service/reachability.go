@@ -120,11 +120,12 @@ func ExerciseReachability(l *Laboratory, at time.Time) map[string]any {
 
     waveController := wave.NewController()
     waveContext, waveCancel := context.WithCancel(context.Background())
-    wave.StartForRun(waveContext, identities.Run, identities.Revision, waveController, at)
+    wave.StartForRun(waveContext, identities.Run, identities.Revision, "section-a", waveController, at)
     waveCancel()
     result["wave_stopped"] = waveController.WaitStopped(time.Second)
     wave.StopForAbort(waveController)
     result["wave_commands"] = wave.CommandCount(waveController, identities.Run)
+    result["wave_breaches"] = len(waveController.Breaches())
 
     absorberController := absorber.NewController(tank.NewBoundary())
     absorberCoordinator := absorber.NewCoordinator(absorberController)

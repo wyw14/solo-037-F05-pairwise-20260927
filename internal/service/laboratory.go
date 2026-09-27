@@ -63,6 +63,9 @@ func NewLaboratory(directory string) (*Laboratory, error) {
     generation := track.NewGeneration()
     carriageController := carriage.NewController()
     waveController := wave.NewController()
+    commissioned := time.Now().UTC()
+    waveController.SetEnvelope("section-a", 0.3, 5, commissioned)
+    waveController.SetEnvelope("section-b", 0.3, 5, commissioned)
     evaluator := permit.NewEvaluator()
     absorberController := absorber.NewController(boundary)
     return &Laboratory{

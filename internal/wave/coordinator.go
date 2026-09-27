@@ -11,16 +11,25 @@ import (
 type Controller struct {
     mu sync.Mutex
     run model.RunID
+    section string
     commands []model.DeviceCommand
+    envelopes map[string]Envelope
+    breaches []Breach
+    last model.DeviceCommand
+    hasLast bool
     active bool
     done chan struct{}
 }
 
-func NewController() *Controller { return &Controller{done: make(chan struct{})} }
+func NewController() *Controller {
+    return &Controller{envelopes: make(map[string]Envelope), done: make(chan struct{})}
+}
 
-func (c *Controller) Start(ctx context.Context, run model.RunID, profile Profile, epoch uint64, at time.Time) {
+func (c *Controller) Start(ctx context.Context, run model.RunID, section string, profile Profile, epoch uint64, at time.Time) {
     c.mu.Lock()
     c.run = run
+    c.section = section
+    c.hasLast = false
     c.active = true
     c.done = make(chan struct{})
     c.mu.Unlock()
@@ -47,7 +56,17 @@ func (c *Controller) loop(ctx context.Context, profile Profile, epoch uint64, at
                 return
             }
             value := samples[index%len(samples)]
-            c.commands = append(c.commands, model.DeviceCommand{ID: string(model.NewEventID()), Run: c.run, Epoch: epoch, Setpoint: value, IssuedAt: now.UTC()})
+            command := model.DeviceCommand{ID: string(model.NewEventID()), Run: c.run, Epoch: epoch, Setpoint: value, IssuedAt: now.UTC()}
+            if breach, ok := c.verify(command); !ok {
+                c.breaches = append(c.breaches, breach)
+                c.active = false
+                close(c.done)
+                c.mu.Unlock()
+                return
+            }
+            c.commands = append(c.commands, command)
+            c.last = command
+            c.hasLast = true
             index++
             c.mu.Unlock()
             _ = at

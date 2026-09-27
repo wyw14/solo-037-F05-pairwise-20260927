@@ -7,9 +7,9 @@ import (
     "github.com/wyw14/solo-037/internal/model"
 )
 
-func StartForRun(ctx context.Context, run model.RunID, revision model.RevisionID, controller *Controller, at time.Time) Profile {
+func StartForRun(ctx context.Context, run model.RunID, revision model.RevisionID, section string, controller *Controller, at time.Time) Profile {
     profile := NewProfile(0.8, 0.15, 80*time.Millisecond)
-    controller.Start(ctx, run, profile, 1, at)
+    controller.Start(ctx, run, section, profile, 1, at)
     _ = revision
     return profile
 }
